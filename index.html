@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La Quinta · Control de despachos</title>
+<style>
+  :root {
+    --fondo: #f5f3ee;
+    --tarjeta: #ffffff;
+    --texto: #1c2434;
+    --suave: #5b6475;
+    --borde: #d9d5c8;
+    --azul: #1d3557;
+    --ok-bg: #e3f2e6;  --ok: #1b5e20;
+    --alerta-bg: #fff3d6; --alerta: #7a4b00;
+    --rech-bg: #fbe3e0; --rech: #a12a1d;
+    --nov-bg: #e8ebf0; --nov: #3d4655;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--texto); font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; line-height: 1.45; }
+  header { background: var(--azul); color: #fff; padding: 20px 24px; }
+  header h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+  header p { margin: 4px 0 0; font-size: 0.95rem; color: #cdd6e4; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+  .aviso { background: var(--alerta-bg); color: var(--alerta); border: 1px solid #e6c36b; border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tabs button { font: inherit; padding: 10px 16px; border: 1px solid var(--borde); background: var(--tarjeta); color: var(--texto); border-radius: 8px; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--azul); color: #fff; border-color: var(--azul); }
+  .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .tarjeta h2 { margin: 0 0 12px; font-size: 1.1rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+  input, select { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid #b9b4a4; border-radius: 8px; background: #fff; color: var(--texto); }
+  input:focus, select:focus, button:focus-visible { outline: 3px solid #8fb3e8; outline-offset: 1px; }
+  .acciones { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .primario { font: inherit; font-weight: 600; padding: 11px 20px; border: 0; border-radius: 8px; background: var(--azul); color: #fff; cursor: pointer; }
+  .primario:disabled { opacity: 0.6; cursor: wait; }
+  .secundario { font: inherit; padding: 8px 12px; border: 1px solid var(--borde); border-radius: 8px; background: #fff; cursor: pointer; }
+  .casos { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .casos span { font-size: 0.9rem; color: var(--suave); }
+  .resultado { border-radius: 12px; padding: 18px 20px; border: 2px solid; margin-bottom: 16px; }
+  .resultado h3 { margin: 0 0 6px; font-size: 1.2rem; }
+  .resultado p { margin: 4px 0; }
+  .r-ok { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .r-alerta { background: var(--alerta-bg); border-color: #c98a00; color: var(--alerta); }
+  .r-rech { background: var(--rech-bg); border-color: var(--rech); color: var(--rech); }
+  .r-nov { background: var(--nov-bg); border-color: var(--nov); color: var(--nov); }
+  .tabla-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); white-space: nowrap; }
+  th { background: #efece3; font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  .etiqueta { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.82rem; font-weight: 600; }
+  .e-ok { background: var(--ok-bg); color: var(--ok); }
+  .e-alerta { background: var(--alerta-bg); color: var(--alerta); }
+  .e-rech { background: var(--rech-bg); color: var(--rech); }
+  .e-nov { background: var(--nov-bg); color: var(--nov); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .kpi { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; }
+  .kpi .valor { font-size: 1.7rem; font-weight: 700; color: var(--azul); }
+  .kpi .nombre { font-size: 0.9rem; font-weight: 600; }
+  .kpi .nota { font-size: 0.82rem; color: var(--suave); }
+  .filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filtros > div { min-width: 180px; }
+  .pie { font-size: 0.85rem; color: var(--suave); margin-top: 8px; }
+  .vacio { padding: 18px; color: var(--suave); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Distribuidora La Quinta S.A.S. · Control de despachos</h1>
+  <p>Cada despacho se valida contra el inventario antes de producir efectos.</p>
+</header>
+
+<main>
+  <div id="aviso-config" class="aviso" hidden></div>
+
+  <nav class="tabs" role="tablist" aria-label="Vistas">
+    <button id="tab-registro" role="tab" aria-selected="true" aria-controls="vista-registro">Registrar despacho</button>
+    <button id="tab-historial" role="tab" aria-selected="false" aria-controls="vista-historial">Historial de movimientos</button>
+  </nav>
+
+  <!-- Vista 1: registro -->
+  <section id="vista-registro" role="tabpanel" aria-labelledby="tab-registro">
+    <div class="tarjeta">
+      <h2>Nuevo despacho</h2>
+      <div class="casos">
+        <span>Casos de prueba (rellenan código y cantidad):</span>
+        <button type="button" class="secundario" data-codigo="INS-0101" data-cantidad="10">C1 · INS-0101 × 10</button>
+        <button type="button" class="secundario" data-codigo="INS-0102" data-cantidad="5">C2 · INS-0102 × 5</button>
+        <button type="button" class="secundario" data-codigo="INS-0407" data-cantidad="5">C3 · INS-0407 × 5</button>
+        <button type="button" class="secundario" data-codigo="INS-9999" data-cantidad="3">C4 · INS-9999 × 3</button>
+        <button type="button" class="secundario" data-codigo="INS-0204" data-cantidad="7">C5 · INS-0204 × 7</button>
+      </div>
+
+      <form id="form-despacho">
+        <div class="grid">
+          <div>
+            <label for="solicitante">Solicitante</label>
+            <input id="solicitante" name="solicitante" type="text" autocomplete="name" required>
+          </div>
+          <div>
+            <label for="correo">Correo</label>
+            <input id="correo" name="correo" type="email" autocomplete="email" required>
+          </div>
+          <div>
+            <label for="codigo_producto">Código de producto</label>
+            <input id="codigo_producto" name="codigo_producto" type="text" placeholder="INS-0101" required>
+          </div>
+          <div>
+            <label for="cantidad">Cantidad</label>
+            <input id="cantidad" name="cantidad" type="number" min="1" step="1" required>
+          </div>
+          <div>
+            <label for="destino">Destino</label>
+            <input id="destino" name="destino" type="text" placeholder="Restaurante o sede" required>
+          </div>
+          <div>
+            <label for="motivo">Motivo</label>
+            <select id="motivo" name="motivo" required>
+              <option value="despacho">Despacho</option>
+              <option value="traslado entre sedes">Traslado entre sedes</option>
+              <option value="avería">Avería</option>
+            </select>
+          </div>
+        </div>
+        <div class="acciones">
+          <button id="btn-registrar" type="submit" class="primario">Registrar despacho</button>
+          <button id="btn-limpiar" type="button" class="secundario">Limpiar</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="zona-resultado" aria-live="polite"></div>
+
+    <div class="tarjeta">
+      <h2>Respuestas de esta sesión</h2>
+      <div class="tabla-wrap">
+        <table>
+          <thead>
+            <tr><th>Hora</th><th>Código</th><th class="num">Cantidad</th><th>Respuesta</th><th class="num">Saldo</th><th class="num">Tiempo</th></tr>
+          </thead>
+          <tbody id="cuerpo-sesion"></tbody>
+        </table>
+      </div>
+      <p class="pie">Los rechazos y los códigos no válidos no se escriben en el historial. Aquí se ven solo durante esta sesión; la prueba queda en el historial de ejecuciones de Make.</p>
+    </div>
+  </section>
+
+  <!-- Vista 2: historial -->
+  <section id="vista-historial" role="tabpanel" aria-labelledby="tab-historial" hidden>
+    <div class="kpis">
+      <div class="kpi">
+        <div class="nombre">Movimientos registrados</div>
+        <div class="valor" id="kpi-total">–</div>
+        <div class="nota">Filas de la tabla movimientos</div>
+      </div>
+      <div class="kpi">
+        <div class="nombre">I1 · Tiempo de respuesta</div>
+        <div class="valor" id="kpi-tiempo">–</div>
+        <div class="nota" id="kpi-tiempo-nota">promedio de fecha_hora_respuesta − fecha_hora_solicitud</div>
+      </div>
+      <div class="kpi">
+        <div class="nombre">I2 · Despachos bajo el mínimo</div>
+        <div class="valor" id="kpi-alerta">–</div>
+        <div class="nota">APROBADO_ALERTA ÷ aprobados × 100</div>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="filtros">
+        <div>
+          <label for="filtro-resultado">Resultado</label>
+          <select id="filtro-resultado">
+            <option value="">Todos</option>
+            <option value="APROBADO">APROBADO</option>
+            <option value="APROBADO_ALERTA">APROBADO_ALERTA</option>
+          </select>
+        </div>
+        <div>
+          <label for="filtro-codigo">Código de producto</label>
+          <input id="filtro-codigo" type="text" placeholder="INS-0101">
+        </div>
+        <button id="btn-actualizar" type="button" class="secundario">Actualizar</button>
+      </div>
+      <div id="estado-historial" class="vacio" hidden></div>
+      <div class="tabla-wrap">
+        <table id="tabla-historial" hidden>
+          <thead>
+            <tr>
+              <th>Respuesta</th><th>Código</th><th>Producto</th><th class="num">Cantidad</th>
+              <th class="num">Saldo anterior</th><th class="num">Saldo resultante</th>
+              <th>Destino</th><th>Motivo</th><th>Solicitante</th><th>Resultado</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo-historial"></tbody>
+        </table>
+      </div>
+      <p class="pie">Fuente: pestaña «movimientos» de la hoja de Google, la misma que escribe Make.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+/* ===== Configuración: se llena una sola vez ===== */
+const CONFIG = {
+  WEBHOOK_URL: "",                 // URL del webhook de Make (módulo Custom webhook)
+  SHEET_ID: "",                    // ID de la hoja de Google (el texto largo entre /d/ y /edit)
+  HOJA_MOVIMIENTOS: "movimientos"  // nombre exacto de la pestaña
+};
+
+/* ===== Utilidades ===== */
+const $ = (id) => document.getElementById(id);
+
+// Fecha y hora de Bogotá como "AAAA-MM-DD HH:mm:ss", el mismo formato que escribe Make.
+function formatoBogota(fecha) {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+  }).formatToParts(fecha);
+  const p = {};
+  partes.forEach((x) => { p[x.type] = x.value; });
+  const hora = p.hour === "24" ? "00" : p.hour;
+  return `${p.year}-${p.month}-${p.day} ${hora}:${p.minute}:${p.second}`;
+}
+
+// Lee "AAAA-MM-DD HH:mm:ss" o "D/M/AAAA H:mm:ss" como hora local (sin zona).
+function leerFecha(texto) {
+  if (!texto) return null;
+  const t = String(texto).trim();
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0));
+  return null;
+}
+
+function mostrarFecha(texto) {
+  const d = leerFecha(texto);
+  if (!d) return texto || "";
+  const dos = (n) => String(n).padStart(2, "0");
+  return `${dos(d.getDate())}/${dos(d.getMonth() + 1)}/${d.getFullYear()} ${dos(d.getHours())}:${dos(d.getMinutes())}:${dos(d.getSeconds())}`;
+}
+
+function celda(texto, clase) {
+  const td = document.createElement("td");
+  td.textContent = texto == null ? "" : String(texto);
+  if (clase) td.className = clase;
+  return td;
+}
+
+const ETIQUETAS = {
+  APROBADO:        { texto: "Aprobado",            caja: "r-ok",     chip: "e-ok" },
+  APROBADO_ALERTA: { texto: "Aprobado con alerta", caja: "r-alerta", chip: "e-alerta" },
+  RECHAZADO:       { texto: "Rechazado",           caja: "r-rech",   chip: "e-rech" },
+  NO_VALIDO:       { texto: "Código no válido",    caja: "r-nov",    chip: "e-nov" }
+};
+
+function chip(resultado) {
+  const info = ETIQUETAS[resultado];
+  const span = document.createElement("span");
+  span.className = "etiqueta " + (info ? info.chip : "e-nov");
+  span.textContent = info ? info.texto : (resultado || "Sin dato");
+  return span;
+}
+
+/* ===== Pestañas ===== */
+function activarVista(nombre) {
+  const registro = nombre === "registro";
+  $("vista-registro").hidden = !registro;
+  $("vista-historial").hidden = registro;
+  $("tab-registro").setAttribute("aria-selected", String(registro));
+  $("tab-historial").setAttribute("aria-selected", String(!registro));
+  if (!registro) cargarHistorial();
+}
+$("tab-registro").addEventListener("click", () => activarVista("registro"));
+$("tab-historial").addEventListener("click", () => activarVista("historial"));
+
+/* ===== Aviso de configuración ===== */
+(function avisarConfiguracion() {
+  const faltan = [];
+  if (!CONFIG.WEBHOOK_URL) faltan.push("WEBHOOK_URL");
+  if (!CONFIG.SHEET_ID) faltan.push("SHEET_ID");
+  if (faltan.length) {
+    const aviso = $("aviso-config");
+    aviso.hidden = false;
+    aviso.textContent = "Falta configurar en index.html: " + faltan.join(" y ") + ".";
+  }
+})();
+
+/* ===== Vista 1: registro ===== */
+document.querySelectorAll("[data-codigo]").forEach((boton) => {
+  boton.addEventListener("click", () => {
+    $("codigo_producto").value = boton.dataset.codigo;
+    $("cantidad").value = boton.dataset.cantidad;
+    $("motivo").value = "despacho";
+    (!$("solicitante").value ? $("solicitante") : $("destino").value ? $("btn-registrar") : $("destino")).focus();
+  });
+});
+
+$("btn-limpiar").addEventListener("click", () => {
+  $("form-despacho").reset();
+  $("zona-resultado").replaceChildren();
+});
+
+function pintarResultado(data, ms) {
+  const info = ETIQUETAS[data.resultado] || { texto: data.resultado || "Respuesta sin resultado", caja: "r-nov" };
+  const caja = document.createElement("div");
+  caja.className = "resultado " + info.caja;
+  const h = document.createElement("h3");
+  h.textContent = info.texto;
+  caja.appendChild(h);
+  const lineas = [];
+  if (data.mensaje) lineas.push(data.mensaje);
+  if (data.producto) lineas.push("Producto: " + data.producto);
+  if (data.saldo_resultante !== undefined && data.saldo_resultante !== "") {
+    let saldo = "Saldo resultante: " + data.saldo_resultante;
+    if (data.minimo !== undefined && data.minimo !== "") saldo += " (mínimo " + data.minimo + ")";
+    lineas.push(saldo);
+  }
+  lineas.push("Respondió en " + (ms / 1000).toFixed(1) + " s");
+  lineas.forEach((l) => { const p = document.createElement("p"); p.textContent = l; caja.appendChild(p); });
+  $("zona-resultado").replaceChildren(caja);
+}
+
+function pintarError(texto) {
+  const caja = document.createElement("div");
+  caja.className = "resultado r-rech";
+  const h = document.createElement("h3");
+  h.textContent = "No se pudo completar";
+  const p = document.createElement("p");
+  p.textContent = texto;
+  caja.append(h, p);
+  $("zona-resultado").replaceChildren(caja);
+}
+
+function agregarASesion(datos, data, ms) {
+  const fila = document.createElement("tr");
+  const hora = formatoBogota(new Date()).slice(11);
+  fila.appendChild(celda(hora));
+  fila.appendChild(celda(datos.codigo_producto));
+  fila.appendChild(celda(datos.cantidad, "num"));
+  const tdRes = document.createElement("td");
+  tdRes.appendChild(chip(data ? data.resultado : "ERROR"));
+  fila.appendChild(tdRes);
+  fila.appendChild(celda(data && data.saldo_resultante !== undefined ? data.saldo_resultante : "", "num"));
+  fila.appendChild(celda((ms / 1000).toFixed(1) + " s", "num"));
+  $("cuerpo-sesion").prepend(fila);
+}
+
+let historialDesactualizado = true;
+
+$("form-despacho").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!CONFIG.WEBHOOK_URL) {
+    pintarError("Falta configurar WEBHOOK_URL en index.html.");
+    return;
+  }
+  const datos = {
+    solicitante: $("solicitante").value.trim(),
+    correo: $("correo").value.trim(),
+    codigo_producto: $("codigo_producto").value.trim().toUpperCase(),
+    cantidad: String(parseInt($("cantidad").value, 10)),
+    destino: $("destino").value.trim(),
+    motivo: $("motivo").value,
+    fecha_hora_solicitud: formatoBogota(new Date())
+  };
+
+  const boton = $("btn-registrar");
+  boton.disabled = true;
+  boton.textContent = "Enviando…";
+  $("zona-resultado").replaceChildren();
+
+  const t0 = performance.now();
+  const control = new AbortController();
+  const limite = setTimeout(() => control.abort(), 45000);
+  try {
+    // Formulario codificado: no dispara la verificación previa (preflight) del navegador.
+    const resp = await fetch(CONFIG.WEBHOOK_URL, {
+      method: "POST",
+      body: new URLSearchParams(datos),
+      signal: control.signal
+    });
+    const texto = await resp.text();
+    const ms = performance.now() - t0;
+    let data = null;
+    try { data = JSON.parse(texto); } catch (_) { /* respuesta que no es JSON */ }
+    if (data && data.resultado) {
+      pintarResultado(data, ms);
+      agregarASesion(datos, data, ms);
+      historialDesactualizado = true;
+    } else {
+      pintarError("Make respondió algo inesperado: " + (texto || "(vacío)").slice(0, 200));
+      agregarASesion(datos, null, ms);
+    }
+  } catch (err) {
+    const ms = performance.now() - t0;
+    const motivo = err.name === "AbortError"
+      ? "El escenario tardó más de 45 s en responder."
+      : "No se pudo contactar el webhook. Revisa que el escenario esté activo (o en «Run once») y que la respuesta incluya el encabezado Access-Control-Allow-Origin.";
+    pintarError(motivo);
+    agregarASesion(datos, null, ms);
+  } finally {
+    clearTimeout(limite);
+    boton.disabled = false;
+    boton.textContent = "Registrar despacho";
+  }
+});
+
+/* ===== Vista 2: historial ===== */
+let movimientos = [];
+
+function leerCSV(texto) {
+  const filas = [];
+  let fila = [], campo = "", comillas = false;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (comillas) {
+      if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+      else if (c === '"') comillas = false;
+      else campo += c;
+    } else if (c === '"') comillas = true;
+    else if (c === ",") { fila.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i + 1] === "\n") i++;
+      fila.push(campo); campo = "";
+      if (fila.some((x) => x !== "")) filas.push(fila);
+      fila = [];
+    } else campo += c;
+  }
+  if (campo !== "" || fila.length) { fila.push(campo); if (fila.some((x) => x !== "")) filas.push(fila); }
+  return filas;
+}
+
+function estadoHistorial(texto) {
+  const caja = $("estado-historial");
+  if (!texto) { caja.hidden = true; return; }
+  caja.hidden = false;
+  caja.textContent = texto;
+}
+
+async function cargarHistorial(forzar) {
+  if (!forzar && !historialDesactualizado && movimientos.length) { pintarHistorial(); return; }
+  if (!CONFIG.SHEET_ID) {
+    estadoHistorial("Falta configurar SHEET_ID en index.html.");
+    $("tabla-historial").hidden = true;
+    return;
+  }
+  estadoHistorial("Cargando movimientos…");
+  const url = "https://docs.google.com/spreadsheets/d/" + encodeURIComponent(CONFIG.SHEET_ID) +
+    "/gviz/tq?tqx=out:csv&headers=1&sheet=" + encodeURIComponent(CONFIG.HOJA_MOVIMIENTOS) + "&_=" + Date.now();
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const filas = leerCSV(await resp.text());
+    if (!filas.length) { movimientos = []; }
+    else {
+      const cab = filas[0].map((h) => h.trim());
+      movimientos = filas.slice(1).map((f) => {
+        const o = {};
+        cab.forEach((h, i) => { o[h] = (f[i] || "").trim(); });
+        return o;
+      });
+    }
+    historialDesactualizado = false;
+    pintarHistorial();
+  } catch (err) {
+    estadoHistorial("No se pudo leer la hoja. Comparte la hoja con «Cualquier persona con el enlace · Lector» y revisa SHEET_ID y el nombre de la pestaña.");
+    $("tabla-historial").hidden = true;
+  }
+}
+
+function pintarHistorial() {
+  // Indicadores sobre todos los movimientos (sin filtros)
+  $("kpi-total").textContent = movimientos.length;
+
+  const tiempos = [];
+  movimientos.forEach((m) => {
+    const a = leerFecha(m.fecha_hora_solicitud), b = leerFecha(m.fecha_hora_respuesta);
+    if (a && b && b >= a) tiempos.push((b - a) / 1000);
+  });
+  if (tiempos.length) {
+    const prom = tiempos.reduce((x, y) => x + y, 0) / tiempos.length;
+    $("kpi-tiempo").textContent = prom.toFixed(1) + " s";
+    $("kpi-tiempo-nota").textContent = "promedio de fecha_hora_respuesta − fecha_hora_solicitud (n = " + tiempos.length + ")";
+  } else {
+    $("kpi-tiempo").textContent = "–";
+    $("kpi-tiempo-nota").textContent = "sin movimientos con ambas fechas";
+  }
+
+  const aprobados = movimientos.filter((m) => m.resultado === "APROBADO" || m.resultado === "APROBADO_ALERTA");
+  const conAlerta = aprobados.filter((m) => m.resultado === "APROBADO_ALERTA").length;
+  $("kpi-alerta").textContent = aprobados.length ? (conAlerta / aprobados.length * 100).toFixed(0) + " %" : "–";
+
+  // Tabla con filtros, más reciente primero
+  const fRes = $("filtro-resultado").value;
+  const fCod = $("filtro-codigo").value.trim().toUpperCase();
+  const lista = movimientos
+    .map((m, i) => ({ m, i, t: leerFecha(m.fecha_hora_respuesta) }))
+    .filter((x) => (!fRes || x.m.resultado === fRes) && (!fCod || (x.m.codigo_producto || "").toUpperCase().includes(fCod)))
+    .sort((a, b) => (b.t ? b.t.getTime() : 0) - (a.t ? a.t.getTime() : 0) || b.i - a.i);
+
+  const cuerpo = $("cuerpo-historial");
+  cuerpo.replaceChildren();
+  if (!lista.length) {
+    estadoHistorial(movimientos.length ? "Ningún movimiento coincide con el filtro." : "Todavía no hay movimientos registrados.");
+    $("tabla-historial").hidden = true;
+    return;
+  }
+  estadoHistorial("");
+  $("tabla-historial").hidden = false;
+  lista.forEach(({ m }) => {
+    const tr = document.createElement("tr");
+    tr.appendChild(celda(mostrarFecha(m.fecha_hora_respuesta)));
+    tr.appendChild(celda(m.codigo_producto));
+    tr.appendChild(celda(m.producto));
+    tr.appendChild(celda(m.cantidad, "num"));
+    tr.appendChild(celda(m.saldo_anterior, "num"));
+    tr.appendChild(celda(m.saldo_resultante, "num"));
+    tr.appendChild(celda(m.destino));
+    tr.appendChild(celda(m.motivo));
+    tr.appendChild(celda(m.solicitante));
+    const td = document.createElement("td");
+    td.appendChild(chip(m.resultado));
+    tr.appendChild(td);
+    cuerpo.appendChild(tr);
+  });
+}
+
+$("btn-actualizar").addEventListener("click", () => cargarHistorial(true));
+$("filtro-resultado").addEventListener("change", () => { if (movimientos.length) pintarHistorial(); });
+$("filtro-codigo").addEventListener("input", () => { if (movimientos.length) pintarHistorial(); });
+</script>
+</body>
+</html>
